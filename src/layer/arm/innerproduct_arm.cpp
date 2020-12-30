@@ -103,7 +103,7 @@ int InnerProduct_arm::create_pipeline_int8(const Option& opt)
     }
 #if __aarch64__
     // first reorder Matrix A before MatMul
-    const int n = num_output; 
+    const int n = num_output;
     const int k = weight_data.c * weight_data.h * weight_data.w;
     weight_data_int8.create(n * k, (size_t)1u, opt.blob_allocator);
 
@@ -118,7 +118,8 @@ int InnerProduct_arm::create_pipeline_int8(const Option& opt)
         if (std::fabs(static_cast<float>(weight_data_int8_scales[i])) <= 1e-6)
         {
             scales_in[i] = 0.f;
-        } else
+        }
+        else
         {
             scales_in[i] = 1.f / (bottom_blob_int8_scale * weight_data_int8_scales[i]);
         }
@@ -147,7 +148,7 @@ int InnerProduct_arm::forward_int8(const Mat& bottom_blob, Mat& top_blob, const 
 
     const int n = num_output;
     const int m = 1;
-    const int k = bottom_blob_tm.c * w * h; 
+    const int k = bottom_blob_tm.c * w * h;
     Mat bottom_blob_reorder(m * k, (size_t)1u, opt.workspace_allocator);
     {
         reorder_a(bottom_blob_tm, bottom_blob_reorder, m, k, k);
@@ -159,11 +160,11 @@ int InnerProduct_arm::forward_int8(const Mat& bottom_blob, Mat& top_blob, const 
     const int8_t* pb = weight_data_int8;
     const size_t ldc = top_blob_tm.cstep;
     int8kernel((void*)pc, pa, pb, m, k, n, ldc, 0, 0, opt);
-    
+
     float* outptr = top_blob;
 
     // dequant.fused.relu int32_t to float
-    for (int p = 0; p < num_output; ++p) 
+    for (int p = 0; p < num_output; ++p)
     {
         float sumfp32 = pc[p] * scales_in[p];
         if (bias_term)
@@ -174,12 +175,12 @@ int InnerProduct_arm::forward_int8(const Mat& bottom_blob, Mat& top_blob, const 
         {
             sumfp32 = std::max(0.f, sumfp32);
         }
-        
+
         outptr[p] = sumfp32;
     }
     return 0;
 #else
-    return InnerProduct::forward(bottom_blob, top_blob, opt);    
+    return InnerProduct::forward(bottom_blob, top_blob, opt);
 #endif
 }
 
@@ -246,7 +247,7 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
     int nn_num_output = num_output >> 2;
     int remain_num_output_start = nn_num_output << 2;
 
-    #pragma omp parallel for num_threads(opt.num_threads)
+#pragma omp parallel for num_threads(opt.num_threads)
     for (int pp = 0; pp < nn_num_output; pp++)
     {
         int p = pp * 4;
@@ -392,8 +393,8 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
         top_blob[p + 3] = sum3;
     }
 
-    // num_output
-    #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
     for (int p = remain_num_output_start; p < num_output; p++)
     {
         float sum = 0.f;
@@ -435,15 +436,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
                     "fmla       %4.4s, v1.4s, v3.4s       \n"
                     "bne        0b                        \n"
                     : "=r"(nn),   // %0
-                    "=r"(m),    // %1
-                    "=r"(w),    // %2
-                    "=w"(_sum), // %3
-                    "=w"(_sum2) // %4
+                      "=r"(m),    // %1
+                      "=r"(w),    // %2
+                      "=w"(_sum), // %3
+                      "=w"(_sum2) // %4
                     : "0"(nn),
-                    "1"(m),
-                    "2"(w),
-                    "3"(_sum),
-                    "4"(_sum2)
+                      "1"(m),
+                      "2"(w),
+                      "3"(_sum),
+                      "4"(_sum2)
                     : "cc", "memory", "v0", "v1", "v2", "v3");
             }
 #else
@@ -460,15 +461,15 @@ int InnerProduct_arm::forward(const Mat& bottom_blob, Mat& top_blob, const Optio
                     "vmla.f32   %q4, q1, q3         \n"
                     "bne        0b                  \n"
                     : "=r"(nn),   // %0
-                    "=r"(m),    // %1
-                    "=r"(w),    // %2
-                    "=w"(_sum), // %3
-                    "=w"(_sum2) // %4
+                      "=r"(m),    // %1
+                      "=r"(w),    // %2
+                      "=w"(_sum), // %3
+                      "=w"(_sum2) // %4
                     : "0"(nn),
-                    "1"(m),
-                    "2"(w),
-                    "3"(_sum),
-                    "4"(_sum2)
+                      "1"(m),
+                      "2"(w),
+                      "3"(_sum),
+                      "4"(_sum2)
                     : "cc", "memory", "q0", "q1", "q2", "q3");
             }
 #endif // __aarch64__
@@ -544,7 +545,6 @@ int InnerProduct_arm::create_pipeline_fp16s(const Option& opt)
     return 0;
 }
 
-
 int InnerProduct_arm::forward_fp16s(const Mat& bottom_blob, Mat& top_blob, const Option& opt) const
 {
     // flatten
@@ -570,8 +570,8 @@ int InnerProduct_arm::forward_fp16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 4 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float32x4_t _sum = vdupq_n_f32(0.f);
@@ -612,8 +612,8 @@ int InnerProduct_arm::forward_fp16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 1 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float32x4_t _sum = vdupq_n_f32(0.f);
@@ -648,8 +648,8 @@ int InnerProduct_arm::forward_fp16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 4 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float sum = 0.f;
@@ -688,8 +688,8 @@ int InnerProduct_arm::forward_fp16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 1 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output; p++)
         {
             float sum = 0.f;
@@ -765,8 +765,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 8 && out_elempack == 8)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float16x8_t _sum = vdupq_n_f16(0.f);
@@ -818,13 +818,13 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
                 "fadd   %1.8h, %1.8h, v2.8h         \n"
 
                 : "=r"(nn),   // %0
-                "=w"(_sum), // %1
-                "=r"(sptr), // %2
-                "=r"(kptr)  // %3
+                  "=w"(_sum), // %1
+                  "=r"(sptr), // %2
+                  "=r"(kptr)  // %3
                 : "0"(nn),
-                "1"(_sum),
-                "2"(sptr),
-                "3"(kptr)
+                  "1"(_sum),
+                  "2"(sptr),
+                  "3"(kptr)
                 : "cc", "memory", "v0", "v1", "v2", "v3", "v8", "v9", "v10", "v11", "v12", "v13", "v14", "v15", "v16");
 
             _sum = activation_ps(_sum, activation_type, activation_params);
@@ -836,8 +836,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 1 && out_elempack == 8)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float16x8_t _sum = vdupq_n_f16(0.f);
@@ -872,8 +872,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 4 && out_elempack == 8)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float16x8_t _sum = vdupq_n_f16(0.f);
@@ -914,8 +914,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 8 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float sum = 0.f;
@@ -955,8 +955,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 8 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float16x4_t _sum = vdup_n_f16(0.f);
@@ -1005,8 +1005,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 4 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float16x4_t _sum = vdup_n_f16(0.f);
@@ -1047,8 +1047,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 1 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float16x4_t _sum = vdup_n_f16(0.f);
@@ -1083,8 +1083,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 4 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float sum = 0.f;
@@ -1123,8 +1123,8 @@ int InnerProduct_arm::forward_fp16sa(const Mat& bottom_blob, Mat& top_blob, cons
 
     if (elempack == 1 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output; p++)
         {
             float sum = 0.f;
@@ -1233,8 +1233,8 @@ int InnerProduct_arm::forward_bf16s(const Mat& bottom_blob, Mat& top_blob, const
 #if __ARM_NEON
     if (elempack == 4 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float32x4_t _sum = vdupq_n_f32(0.f);
@@ -1282,8 +1282,8 @@ int InnerProduct_arm::forward_bf16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 1 && out_elempack == 4)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float32x4_t _sum = vdupq_n_f32(0.f);
@@ -1318,8 +1318,8 @@ int InnerProduct_arm::forward_bf16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 4 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output / out_elempack; p++)
         {
             float sum = 0.f;
@@ -1365,8 +1365,8 @@ int InnerProduct_arm::forward_bf16s(const Mat& bottom_blob, Mat& top_blob, const
 
     if (elempack == 1 && out_elempack == 1)
     {
-        // num_output
-        #pragma omp parallel for num_threads(opt.num_threads)
+// num_output
+#pragma omp parallel for num_threads(opt.num_threads)
         for (int p = 0; p < num_output; p++)
         {
             float sum = 0.f;
